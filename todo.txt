@@ -1,0 +1,9 @@
+> input de comandos #feito
+> parser de comandos #feito
+> executar comandos #feito
+> fork	#feito
+> wait	#feito
+> pipes	#feito
+> redirecionamento de arquivos
+> combinar operadores
+> executar em background (&)
