@@ -72,11 +72,11 @@ struct_pipe *pipeParser(char *Args, struct_pipe *Pipes){
 			nComs++;
 		}
 		else if(Args[i] == '<'){	//redirect de input
-			nComs++;
+			//nComs++;
 			Pipes->redirFlag = IN_REDIR;
 		}
 		else if(Args[i] == '>'){	//redirect de output
-			nComs++;
+			//nComs++;
 			Pipes->redirFlag = OUT_REDIR;
 		}
 		i++;
@@ -91,9 +91,8 @@ struct_pipe *pipeParser(char *Args, struct_pipe *Pipes){
 	while((coms = strsep(&Args, "|")) || (coms = strsep(&Args, ">")) || (coms = strsep(&Args, "<"))){
 		out->Coms[i] = commandParser(coms);
 		i++;
-		//printf("%d\n", i);
 	}
-	//printPipe(out);
+	// /printPipe(out);
 
 	return out;
 
@@ -111,4 +110,52 @@ struct_pipe printPipe(struct_pipe *Pipes){
 		printf("\n");
 	}
 	printf("Total de %d comandos\n", Pipes->nComs);
+}
+
+//remove < ou > dos argumetos
+void removeChar(struct_coms *Comandos, char *garbage) {
+	int j = 0 , i = 0, k=0;
+	int foundc	 = 0;
+	if(foundc == 0){
+		while(Comandos->args[i] != NULL){
+			if(strcmp(Comandos->args[i], garbage) != 0 ){
+				strcpy(Comandos->args[j++], Comandos->args[i]);
+			}
+			i++;
+		}	
+		Comandos->args[j] = NULL;
+	}
+}
+//remove < e > da string de argumentos
+void removeCharIO(struct_coms *Comandos) {		//nao funciona por algum motivo misterioso
+
+	int j = 0 , i = 0, k=0;
+	while(Comandos->args[i] != NULL){
+		if(strcmp(Comandos->args[i], "<") != 0 ){
+			strcpy(Comandos->args[j++], Comandos->args[i]);
+			
+		}
+		printf("%s\n", Comandos->args[i]);
+		i++;
+
+	}	
+	Comandos->args[j] = NULL;
+	/*while(Comandos->args[k] != NULL){
+		printf("%s\n", Comandos->args[k]);
+		//printf("%d\n", k);	
+		k++;
+	}
+	k  = 0;*/	
+	i = 0;
+	j = 0;
+
+	while(Comandos->args[i] != NULL){
+		if(strcmp(Comandos->args[i], ">") != 0 ){
+			strcpy(Comandos->args[j++], Comandos->args[i]);
+		}
+		i++;
+	}	
+	Comandos->args[j] = NULL;
+
+	
 }

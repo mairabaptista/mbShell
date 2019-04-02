@@ -5,8 +5,9 @@
 #define UTILS_H
 #define BUFFERSIZE 64
 #define TOKEN_DELIM " \t\r\n\a"
-#define IN_REDIR 2
-#define OUT_REDIR 4
+#define IN_REDIR 0
+#define OUT_REDIR 1
+#define IN_OUT_REDIR 2
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,3 +35,6 @@ int pipeHandler(struct_pipe *Pipes, struct_coms *Comandos, int (*pipes)[2]);
 int commandExecute(struct_pipe *Pipes);
 int execNopipe(struct_coms *Comandos);
 struct_pipe printPipe(struct_pipe *Pipes);
+int IOHandler(struct_pipe *Pipes, struct_coms *Comandos, char *input_file, char *output_file, int flag);
+void removeChar(struct_coms *Comandos, char *garbage);
+void removeCharIO(struct_coms *Comandos);
