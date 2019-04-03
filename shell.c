@@ -17,6 +17,9 @@ int IOHandler(struct_pipe *Pipes, struct_coms *Comandos, char *input_file, char 
 	int fd_in, fd_out;
 	if(pid == 0){	//filho
 		if(flag == 0){	//IN_REDIR
+
+			getCommand(Comandos, "<");
+			
 			//abre arquivo
 			fd_in = open(input_file, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); 	//abre como read only
 			if(fd_in < 0){
@@ -28,6 +31,7 @@ int IOHandler(struct_pipe *Pipes, struct_coms *Comandos, char *input_file, char 
 			close(fd_in);
 		}
 		else if(flag == 1){		//OUT_REDIR
+			getCommand(Comandos, ">");
 			//abre/cria o arquivo e habilita para escrita
 			fd_out = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);	
 			if(fd_out < 0){
@@ -35,10 +39,12 @@ int IOHandler(struct_pipe *Pipes, struct_coms *Comandos, char *input_file, char 
 				return -1;
 			}
 			//troca o stdout pelo arquivo
+			close(STDOUT_FILENO);
 			dup2(fd_out, STDOUT_FILENO);
 			close(fd_out);
 		}
-		else if(flag = 2){	//	IN_REDIR e OUT_REDIR
+		else if(flag == 2){	//	IN_REDIR e OUT_REDIR
+			getCommand(Comandos, "<");
 			fd_in = open(input_file, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 			dup2(fd_in, STDIN_FILENO);
 			close(fd_in);
@@ -46,6 +52,7 @@ int IOHandler(struct_pipe *Pipes, struct_coms *Comandos, char *input_file, char 
 			fd_out = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 			dup2(fd_out, STDOUT_FILENO);
 			close(fd_out);
+			
 		}
 		if(execvp(Comandos->name, Comandos->args) < 0){
 			perror("execvp filho\n");
@@ -63,22 +70,32 @@ int IOHandler(struct_pipe *Pipes, struct_coms *Comandos, char *input_file, char 
 	return pid;
 }
 
-int execNopipe(struct_coms *Comandos){
+int execNopipe(struct_coms *Comandos, int background){
 	pid_t pid;
+	
 	pid = fork();	
-	if(pid == 0){	//filho
+	if(pid < 0){
+		perror("fork");
+		return -1;
+	}
+	else if(pid == 0){	//filho
+		if(background == 1){
+			removeBackground(Comandos);
+		}
 		if(execvp(Comandos->name, Comandos->args) < 0){
 			perror("execvp filho\n");
 			return -1;
 		}
 	}
 	else if(pid > 0){	//pai
-		waitpid(pid, NULL, 0);
+		if(background == 0){
+			waitpid(pid, NULL, 0);
+		}
+		else{
+			printf("Processo criado com PID %d\n", pid);
+		}
 	}
-	else if(pid < 0){
-		perror("fork");
-		return -1;
-	}
+	
 
 	return 0;
 }
@@ -86,56 +103,86 @@ int execNopipe(struct_coms *Comandos){
 int pipeHandler(struct_pipe *Pipes, struct_coms *Comandos, int (*pipes)[2]){
 	//se eu chamar IOHandler aqui, cria outro fork, isso ta certo?
 	pid_t pid;
-	//pid = fork();
+	pid = fork();
 	int i, j = 0;
 	int foundC = 0;
 	int fd_in, fd_out;
 	int fdesc_input = Comandos->fd[0];
 	int fdesc_output = Comandos->fd[1];
+	int redF = 0;
 
-	while(Comandos->args[j] != NULL){
-		if(strcmp(Comandos->args[j], ">") == 0){	//OUT_REDIR
-			removeChar(Pipes->Coms[0],">");
-			//abre/cria o arquivo e habilita para escrita
-			fd_out = open(Comandos->args[j], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);	
-			if(fd_out < 0){
-				perror("open 2");
-				return -1;
+	//pid = fork();
+	if(pid == 0){  //filho
+
+		while(Comandos->args[j] != NULL){	//IN_OUT_REDIR
+			if(Comandos->args[j+2] != NULL){
+				if((strcmp(Comandos->args[j], "<") == 0) && (strcmp(Comandos->args[j+2], ">") == 0)){
+					
+					fd_in = open(Comandos->args[j+1], O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+					dup2(fd_in, STDIN_FILENO);
+					close(fd_in);
+
+					fd_out = open(Comandos->args[j+3], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+					dup2(fd_out, STDOUT_FILENO);
+					close(fd_out);
+					getCommand(Comandos, "<");
+					redF = 1;					
+					break;
+				}			
 			}
-			//troca o stdout pelo arquivo
-			dup2(fd_out, STDOUT_FILENO);
-			close(fd_out);
-			foundC = 1;
-
+			j++;
 		}
-		else if(strcmp(Comandos->args[j], "<") == 0){	//IN_REDIR
-			removeChar(Pipes->Coms[0],"<");
-			//abre arquivo
-			fd_in = open(Comandos->args[j], O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); 	//abre como read only
-			if(fd_in < 0){
-				perror("open 1");
-				return -1;
+		j=0;
+		if(redF == 0){
+			while(Comandos->args[j] != NULL){
+				if(strcmp(Comandos->args[j], ">") == 0){	//OUT_REDIR
+					
+					//IOHandler(Pipes, Comandos, NULL, Comandos->args[j], OUT_REDIR);
+					//abre/cria o arquivo e habilita para escrita
+					fd_out = open(Comandos->args[j+1], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+						
+					if(fd_out < 0){
+						perror("open 2");
+						return -1;
+					}
+					//troca o stdout pelo arquivo
+					dup2(fd_out, STDOUT_FILENO);	//Qual descritor de arquivo aqui?
+					close(fd_out);
+					foundC = 1;
+					getCommand(Comandos, ">");
+					break;
+
+				}
+				else if(strcmp(Comandos->args[j], "<") == 0){	//IN_REDIR
+					
+					//IOHandler(Pipes, Comandos, Comandos->args[j], NULL, IN_REDIR);
+					//abre arquivo
+					fd_in = open(Comandos->args[j+1], O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); 	//abre como read only
+					
+					if(fd_in < 0){
+						perror("open 1");
+						return -1;
+					}
+					//troca o stdin pelo arquivo
+					dup2(fd_in, STDIN_FILENO);	//Qual descritor de arquivo aqui?
+					close(fd_in);
+					foundC = 1;
+					getCommand(Comandos, "<");
+					break;
+				}	
+				j++;
 			}
-			//troca o stdin pelo arquivo
-			dup2(fd_in, STDIN_FILENO);
-			close(fd_in);
-			foundC = 1;
-		}	
-		j++;
-	}
+		}
+		
 
-	if(foundC == 0){
-		pid = fork();
-		if(pid == 0){	//filho		
-
-		if(foundC == 0){
-			if(fdesc_input != -1 && fdesc_input != STDIN_FILENO){
+		if(fdesc_input != -1 && fdesc_input != STDIN_FILENO){
 			dup2(fdesc_input, STDIN_FILENO);
-			}
-			if(fdesc_output != -1 && fdesc_output != STDOUT_FILENO){
-				dup2(fdesc_output, STDOUT_FILENO);
-			}
 		}
+		if(fdesc_output != -1 && fdesc_output != STDOUT_FILENO){
+			dup2(fdesc_output, STDOUT_FILENO);
+		}
+
+		
 
 		//fechar todos os pipes
 		for(i = 0; i < (Pipes->nComs - 1); i++){
@@ -149,8 +196,8 @@ int pipeHandler(struct_pipe *Pipes, struct_coms *Comandos, int (*pipes)[2]){
 		}
 		free(pipes);
 		exit(1);
-		}
 	}
+	
 
 	return pid;
 }
@@ -160,30 +207,57 @@ int commandExecute(struct_pipe *Pipes){
 	int i = 1;
 	int j = 0;
 	int l, k = 0;
+	int background = 0;
 	int returnedPID;
 	int foundC = 0;
+	int redF = 0;
 
 	//Se tem apenas 1 comando, nao possui pipe -> executa direto
 	if(Pipes->nComs == 1){
-		//checa se temos > ou < para apenas 1 comando
+		//checa se temos & (processo em background)
 		while(Pipes->Coms[0]->args[j] != NULL){
+			if(strcmp(Pipes->Coms[0]->args[j], "&") == 0){
+				//printf("testets\n");
+				background = 1;
+			}
+			j++;
+		}
+		j = 0;
+
+		while(Pipes->Coms[0]->args[j] != NULL){
+			if(Pipes->Coms[0]->args[j+2] != NULL){
+				if((strcmp(Pipes->Coms[0]->args[j], "<") == 0) && (strcmp(Pipes->Coms[0]->args[j+2], ">") == 0)){
+					Pipes->redirFlag = IN_OUT_REDIR;
+					IOHandler(Pipes, Pipes->Coms[0], Pipes->Coms[0]->args[j+1], Pipes->Coms[0]->args[j+3], Pipes->redirFlag);
+					redF = 1;
+					
+					break;
+				}			
+			}
+			j++;
+		}
+		j=0;
+		if(redF == 0){
+			//checa se temos > ou < para apenas 1 comando
+			while(Pipes->Coms[0]->args[j] != NULL){
 			if(strcmp(Pipes->Coms[0]->args[j], ">") == 0){	//OUT_REDIR
 				Pipes->redirFlag = OUT_REDIR;
-				removeChar(Pipes->Coms[0],">");
-				IOHandler(Pipes, Pipes->Coms[0], Pipes->Coms[0]->args[j], Pipes->Coms[0]->args[j], Pipes->redirFlag);
+				IOHandler(Pipes, Pipes->Coms[0], Pipes->Coms[0]->args[j+1], Pipes->Coms[0]->args[j+1], Pipes->redirFlag);
 				foundC = 1;
 			}
 			else if(strcmp(Pipes->Coms[0]->args[j], "<") == 0){	//IN_REDIR
 				Pipes->redirFlag = IN_REDIR;
-				removeChar(Pipes->Coms[0],"<");
-				IOHandler(Pipes, Pipes->Coms[0], Pipes->Coms[0]->args[j], Pipes->Coms[0]->args[j], Pipes->redirFlag);
+				IOHandler(Pipes, Pipes->Coms[0], Pipes->Coms[0]->args[j+1], Pipes->Coms[0]->args[j+1], Pipes->redirFlag);
 				foundC = 1;
 			}
 			
 			j++;
 		}
+		}
+		
+		
 		if (foundC == 0){
-			execNopipe(Pipes->Coms[0]);
+			execNopipe(Pipes->Coms[0], background);
 		}		
 	}
 
@@ -211,13 +285,6 @@ int commandExecute(struct_pipe *Pipes){
 		i = 0;
 
 		while(Pipes->Coms[i] != NULL){
-			//
-			//
-			//
-			//tentar redirecionamento aqui
-			//
-			//
-			//
 			returnedPID = pipeHandler(Pipes, Pipes->Coms[i], pipes);
 			i++;
 		}
@@ -244,7 +311,9 @@ int main(){
 	struct_pipe *piperino;
 	char *inputs = NULL;
 	while(1){
+		printf("\033[1;36m");
 		printf("mbShell> ");
+		printf("\033[0m");
 		inputs = readInput();
 		piperino = pipeParser(inputs, piperino);
 		rets = commandExecute(piperino);

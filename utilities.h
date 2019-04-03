@@ -33,7 +33,7 @@ struct_coms *commandParser(char *args);
 struct_pipe *pipeParser(char *args,struct_pipe *Pipes);
 int pipeHandler(struct_pipe *Pipes, struct_coms *Comandos, int (*pipes)[2]);
 int commandExecute(struct_pipe *Pipes);
-int execNopipe(struct_coms *Comandos);
+int execNopipe(struct_coms *Comandos, int background);
 struct_pipe printPipe(struct_pipe *Pipes);
 int IOHandler(struct_pipe *Pipes, struct_coms *Comandos, char *input_file, char *output_file, int flag);
 void removeChar(struct_coms *Comandos, char *garbage);

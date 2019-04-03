@@ -115,17 +115,48 @@ struct_pipe printPipe(struct_pipe *Pipes){
 //remove < ou > dos argumetos
 void removeChar(struct_coms *Comandos, char *garbage) {
 	int j = 0 , i = 0, k=0;
-	int foundc	 = 0;
+	int foundc = 0;
+
 	if(foundc == 0){
 		while(Comandos->args[i] != NULL){
 			if(strcmp(Comandos->args[i], garbage) != 0 ){
 				strcpy(Comandos->args[j++], Comandos->args[i]);
+				//Comandos->args[i] = NULL;
+				
 			}
 			i++;
 		}	
+		
+	
 		Comandos->args[j] = NULL;
 	}
 }
+void removeBackground(struct_coms *Comandos){
+	int i =0;
+	while(strcmp(Comandos->args[i], "&") != 0){
+		i++;
+	}
+	Comandos->args[i++] = NULL;
+	i=0;
+	while(Comandos->args[i] != NULL){
+		printf("%s\n", Comandos->args[i]);
+		//printf("%d\n", k);	
+		i++;
+	}
+}
+void getCommand(struct_coms *Comandos, char *garbage) {
+	int i = 0;
+
+	while(strcmp(Comandos->args[i], garbage) != 0){
+		i++;
+	}
+	
+	Comandos->args[i++] = NULL;
+	i = 0 ;
+	
+	
+}
+
 //remove < e > da string de argumentos
 void removeCharIO(struct_coms *Comandos) {		//nao funciona por algum motivo misterioso
 
