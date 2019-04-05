@@ -1,4 +1,4 @@
-# mbShell
+# mbShell   ![CI status](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 mbShell is a simple simulation of a Linux shell.
 
